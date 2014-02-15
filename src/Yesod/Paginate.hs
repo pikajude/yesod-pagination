@@ -23,7 +23,6 @@ import Data.Text (Text)
 import qualified Data.Text.Read as R
 import Database.Esqueleto
 import Database.Esqueleto.Internal.Language
-import Debug.Trace
 import Prelude
 import Text.Shakespeare.Text
 import Yesod hiding (Value)
@@ -87,12 +86,12 @@ paginateWithConfig c sel = do
         _ <- filterStmt u -- does nothing, used for type constraint
         return (countRows :: SqlExpr (Value Int64))
 
-    let maxPage = (unValue ct + pageSize c - 1) `div` pageSize c
+    let maxPage = max 1 $ (unValue ct + pageSize c - 1) `div` pageSize c
         cp = within (1, maxPage) $ currentPage c
 
     es <- runDB $ select $ from $ \u -> do
         _ <- filterStmt u
-        offset $ within (0, unValue ct - 1) $ pageSize c * (cp - 1)
+        offset $ within (0, max 0 $ unValue ct - 1) $ pageSize c * (cp - 1)
         sel u
 
     rt' <- getCurrentRoute
@@ -105,7 +104,7 @@ paginateWithConfig c sel = do
 
     return Page { pageResults = es
                 , pageCount = maxPage
-                , nextPage = traceShow (cp, maxPage) $ if cp >= maxPage then Nothing else Just np
+                , nextPage = if cp == maxPage then Nothing else Just np
                 , previousPage = if cp == 1 then Nothing else Just pp
                 }
     where
@@ -120,6 +119,7 @@ decimalM t = case R.decimal t of
     Left _ -> Nothing
 
 within :: Ord a => (a,a) -> a -> a
+within (a,b) _ | b < a = error "within error"
 within (a,b) q | q <= a = a
                | q >= b = b
                | otherwise = q

@@ -14,6 +14,7 @@ import qualified Data.ByteString.Lazy.UTF8 as B
 import Data.Maybe
 import Data.Pool
 import Database.Persist.Sqlite hiding (get)
+import Debug.Trace
 import Network.Wai.Test
 import Test.Hspec
 import Text.Shakespeare.Text
@@ -56,7 +57,7 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
                 clearOut pool
 
                 get ItemsR
-                wantPage $ Page [] 0 Nothing Nothing
+                wantPage $ Page [] 1 Nothing Nothing
 
             yit "with some items" $ do
                 clearOut pool
@@ -81,7 +82,8 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
 
 getPage :: YesodExample TestApp (Page Item)
 getPage = withResponse $ \SResponse { simpleBody } ->
-    return $ read (B.toString simpleBody)
+    traceShow simpleBody $
+        return $ read (B.toString simpleBody)
 
 wantPage :: Page Item -> YesodExample TestApp ()
 wantPage p = do
