@@ -42,7 +42,7 @@ instance Default PageConfig where
 -- | Returned by 'paginate' and friends.
 data Page r = Page
             { pageResults :: [Entity r] -- ^ Returned entities.
-            , pageCount :: Int64 -- ^ Total number of pages.
+            , pageCount :: Int64 -- ^ Total number of pages. This will be at minimum 1, even for an empty result set.
             , nextPage :: Maybe Text -- ^ Link to next page, pre-rendered.
             , previousPage :: Maybe Text -- ^ Link to previous page, pre-rendered.
             } deriving (Eq, Read, Show)
