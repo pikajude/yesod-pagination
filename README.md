@@ -4,7 +4,7 @@
 
 This package makes it pretty simple to paginate records.
 
-You'll probably want to use the function `paginate`, which takes a function `t -> SqlQuery (SqlExpr (Entity r))` and gives you `Handler (Page r)`. The returned `Page` object might have next page and previous page links (`pre-rendered`).
+You'll probably want to use the function `paginate`, which takes a function `t -> SqlQuery (SqlExpr (Entity r))` and gives you `Handler (Page r)`. The returned `Page` object might have next page and previous page links (pre-rendered).
 
 The parameter to `paginate` should be an `esqueleto` query. The most trivial example is `return`. This one is a bit less trivial.
 
