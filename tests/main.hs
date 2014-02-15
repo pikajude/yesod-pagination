@@ -7,9 +7,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
+import Control.Monad
 import Control.Monad.Logger
 import Control.Monad.Trans.Resource
 import qualified Data.ByteString.Lazy.UTF8 as B
+import Data.Maybe
+import Data.Pool
 import Database.Persist.Sqlite hiding (get)
 import Network.Wai.Test
 import Test.Hspec
@@ -40,7 +43,7 @@ instance YesodPersist TestApp where
 
 getItemsR :: HandlerT TestApp IO TypedContent
 getItemsR = do
-    (items :: Page Item) <- paginate return
+    (items :: Page Item) <- paginate
     selectRep . provideRep $ return [stext|#{show items}|]
 
 main :: IO ()
@@ -51,17 +54,39 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
         ydescribe "pages" $ do
             yit "with nothing" $ do
                 clearOut pool
+
+                get ItemsR
                 wantPage $ Page [] 0 Nothing Nothing
 
             yit "with some items" $ do
                 clearOut pool
                 k <- liftIO $ runSqlPersistMPool (insert $ Item "hello, world!") pool
+
+                get ItemsR
                 wantPage $ Page [Entity k (Item "hello, world!")] 1 Nothing Nothing
+
+            yit "with two pages" $ do
+                clearOut pool
+                liftIO $ runSqlPersistMPool (replicateM_ 18 $ insert $ Item "hello, world!") pool
+
+                get ItemsR
+                cp <- getPage
+                liftIO $ length (pageResults cp) `shouldBe` 10
+                liftIO $ previousPage cp `shouldBe` Nothing
+
+                get $ fromJust (nextPage cp)
+                cp' <- getPage
+                liftIO $ length (pageResults cp') `shouldBe` 8
+                liftIO $ nextPage cp' `shouldBe` Nothing
+
+getPage :: YesodExample TestApp (Page Item)
+getPage = withResponse $ \SResponse { simpleBody } ->
+    return $ read (B.toString simpleBody)
 
 wantPage :: Page Item -> YesodExample TestApp ()
 wantPage p = do
-    get ItemsR
-    withResponse $ \SResponse { simpleBody } ->
-        liftIO $ read (B.toString simpleBody) `shouldBe` p
+    pg <- getPage
+    liftIO $ pg `shouldBe` p
 
+clearOut :: MonadIO m => Pool Connection -> m ()
 clearOut pool = liftIO $ runSqlPersistMPool (deleteWhere ([] :: [Filter Item])) pool

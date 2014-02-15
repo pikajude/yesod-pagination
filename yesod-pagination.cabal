@@ -1,7 +1,7 @@
 name:                yesod-pagination
 version:             0.1.0.0
 synopsis:            Pagination in Yesod
-description:         Pagination for Yesod
+description:         Easy pagination for Yesod.
 homepage:            https://github.com/joelteon/yesod-pagination
 license:             MIT
 license-file:        LICENSE
@@ -31,6 +31,7 @@ test-suite test
                      , monad-logger
                      , persistent
                      , persistent-sqlite
+                     , resource-pool
                      , resourcet
                      , shakespeare-text
                      , utf8-string

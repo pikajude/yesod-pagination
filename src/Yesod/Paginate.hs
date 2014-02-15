@@ -3,11 +3,16 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
+-- | Easy pagination for Yesod.
 module Yesod.Paginate (
-    PageConfig(..),
-    Page(..),
-    paginate, paginateWith
+    -- *** Paginating
+    paginate, paginateWith, paginateWithConfig,
+
+    -- *** Datatypes
+    PageConfig(..), def,
+    Page(..)
 ) where
 
 import Control.Monad
@@ -23,6 +28,10 @@ import Prelude
 import Text.Shakespeare.Text
 import Yesod hiding (Value)
 
+-- | Which page we're on, and how big it is.
+--
+-- 'paginate' and 'paginateWith' build this datatype based on the current
+-- query string parameters. Use 'paginateWithConfig' to provide your own.
 data PageConfig = PageConfig
                 { pageSize :: Int64
                 , currentPage :: Int64
@@ -31,19 +40,28 @@ data PageConfig = PageConfig
 instance Default PageConfig where
     def = PageConfig { pageSize = 10, currentPage = 1 }
 
+-- | Returned by 'paginate' and friends.
 data Page r = Page
-            { pageResults :: [Entity r]
-            , pageCount :: Int64
-            , nextPage :: Maybe Text
-            , previousPage :: Maybe Text
+            { pageResults :: [Entity r] -- ^ Returned entities.
+            , pageCount :: Int64 -- ^ Total number of pages.
+            , nextPage :: Maybe Text -- ^ Link to next page, pre-rendered.
+            , previousPage :: Maybe Text -- ^ Link to previous page, pre-rendered.
             } deriving (Eq, Read, Show)
 
-paginate :: (PersistEntity r, From SqlQuery SqlExpr SqlBackend t,
-             RenderRoute site, YesodPersist site,
-             YesodPersistBackend site ~ SqlPersistT)
-         => (t -> SqlQuery (SqlExpr (Entity r)))
-         -> HandlerT site IO (Page r)
-paginate sel = do
+-- | Paginate a model using default options - nothing special.
+paginate :: (PersistEntity r, RenderRoute site, YesodPersist site,
+             YesodPersistBackend site ~ SqlPersistT,
+             PersistEntityBackend r ~ SqlBackend)
+         => HandlerT site IO (Page r) -- ^ Returned page.
+paginate = paginateWith return
+
+-- | Paginate a model, given an esqueleto query.
+paginateWith :: (PersistEntity r, From SqlQuery SqlExpr SqlBackend t,
+                 RenderRoute site, YesodPersist site,
+                 YesodPersistBackend site ~ SqlPersistT)
+             => (t -> SqlQuery (SqlExpr (Entity r))) -- ^ SQL query.
+             -> HandlerT site IO (Page r) -- ^ Returned page.
+paginateWith sel = do
     params <- liftM2 (\a b -> fst a ++ reqGetParams b)
         runRequestBody getRequest
 
@@ -53,14 +71,16 @@ paginate sel = do
            . maybe 10 (fromMaybe 10 . decimalM)
            $ lookup "count" params
 
-    paginateWith def { pageSize, currentPage } sel
+    paginateWithConfig def { pageSize, currentPage } sel
 
-paginateWith :: (PersistEntity r, From SqlQuery SqlExpr SqlBackend t,
-                 RenderRoute site, YesodPersist site,
-                 YesodPersistBackend site ~ SqlPersistT)
-             => PageConfig -> (t -> SqlQuery (SqlExpr (Entity r)))
-             -> HandlerT site IO (Page r)
-paginateWith c sel = do
+-- | Paginate a model, given a configuration and an esqueleto query.
+paginateWithConfig :: (PersistEntity r, From SqlQuery SqlExpr SqlBackend t,
+                       RenderRoute site, YesodPersist site,
+                       YesodPersistBackend site ~ SqlPersistT)
+                   => PageConfig -- ^ Preferred config.
+                   -> (t -> SqlQuery (SqlExpr (Entity r))) -- ^ SQL query.
+                   -> HandlerT site IO (Page r) -- ^ Returned page.
+paginateWithConfig c sel = do
     let filterStmt u = limit (pageSize c) >> return u
 
     [ct] <- runDB $ select $ from $ \u -> do
