@@ -13,8 +13,8 @@ import Control.Monad.Trans.Resource
 import qualified Data.ByteString.Lazy.UTF8 as B
 import Data.Maybe
 import Data.Pool
+import Data.Text (Text)
 import Database.Persist.Sqlite hiding (get)
-import Debug.Trace
 import Network.Wai.Test
 import Test.Hspec
 import Text.Shakespeare.Text
@@ -80,10 +80,17 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
                 liftIO $ length (pageResults cp') `shouldBe` 8
                 liftIO $ nextPage cp' `shouldBe` Nothing
 
+            yit "caps at the maximum page" $ do
+                clearOut pool
+                liftIO $ runSqlPersistMPool (replicateM_ 5 $ insert $ Item "hello, world!") pool
+
+                get ("/items?page=2" :: Text)
+                cp <- getPage
+                liftIO $ length (pageResults cp) `shouldBe` 5
+
 getPage :: YesodExample TestApp (Page Item)
 getPage = withResponse $ \SResponse { simpleBody } ->
-    traceShow simpleBody $
-        return $ read (B.toString simpleBody)
+    return $ read (B.toString simpleBody)
 
 wantPage :: Page Item -> YesodExample TestApp ()
 wantPage p = do

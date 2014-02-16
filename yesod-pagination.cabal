@@ -34,6 +34,7 @@ test-suite test
                      , resource-pool
                      , resourcet
                      , shakespeare-text
+                     , text
                      , utf8-string
                      , wai-test
                      , yesod
