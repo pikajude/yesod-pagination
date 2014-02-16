@@ -43,7 +43,6 @@ instance Default PageConfig where
 -- | Returned by 'paginate' and friends.
 data Page r = Page
             { pageResults :: [r] -- ^ Returned entities.
-            , pageCount :: Int64 -- ^ Total number of pages. This will be at minimum 1, even for an empty result set.
             , nextPage :: Maybe Text -- ^ Link to next page, pre-rendered.
             , previousPage :: Maybe Text -- ^ Link to previous page, pre-rendered.
             } deriving (Eq, Read, Show)
@@ -82,17 +81,12 @@ paginateWithConfig :: (From SqlQuery SqlExpr SqlBackend t, SqlSelect a r,
                    -> HandlerT site IO (Page r) -- ^ Returned page.
 paginateWithConfig c sel = do
     let filterStmt u = limit (pageSize c) >> return u
-
-    [ct] <- runDB $ select $ from $ \u -> do
-        _ <- filterStmt u -- does nothing, used for type constraint
-        return (countRows :: SqlExpr (Value Int64))
-
-    let maxPage = max 1 $ (unValue ct + pageSize c - 1) `div` pageSize c
-        cp = within (1, maxPage) $ currentPage c
+        cp = max 1 $ currentPage c
 
     es <- runDB $ select $ from $ \u -> do
         _ <- filterStmt u
-        offset $ within (0, max 0 $ unValue ct - 1) $ pageSize c * (cp - 1)
+        limit (pageSize c + 1)
+        offset $ max 0 $ pageSize c * (cp - 1)
         sel u
 
     rt' <- getCurrentRoute
@@ -103,13 +97,13 @@ paginateWithConfig c sel = do
         np = rend rt $ updateQs qs ("page", [st|#{cp + 1}|])
         pp = rend rt $ updateQs qs ("page", [st|#{cp - 1}|])
 
-    return Page { pageResults = es
-                , pageCount = maxPage
-                , nextPage = if cp == maxPage then Nothing else Just np
+    return Page { pageResults = take (fromIntegral $ pageSize c) es
+                , nextPage = if fromIntegral (length es) == pageSize c + 1
+                                 then Just np
+                                 else Nothing
                 , previousPage = if cp == 1 then Nothing else Just pp
                 }
     where
-        unValue (Value a) = a
         updateQs ((a,b):as) (k,v) | k == a = (k,v):as
                                   | otherwise = (a,b):updateQs as (k,v)
         updateQs [] (k,v) = [(k,v)]
