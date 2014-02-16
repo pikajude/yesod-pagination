@@ -4,9 +4,9 @@
 
 This package makes it pretty simple to paginate records.
 
-You'll probably want to use the function `paginateWith`, which takes a function `t -> SqlQuery (SqlExpr (Entity r))` and gives you `Handler (Page r)`. The returned `Page` object might have next page and previous page links (pre-rendered).
+You'll probably want to use the function `paginateWith`, which takes an esqueleto query and gives you `Handler (Page r)`. The returned `Page` object might have next page and previous page links (pre-rendered).
 
-The parameter to `paginateWith` should be an `esqueleto` query. The most trivial example is `return` (`paginate` is basically `paginateWith return`). This one is a bit less trivial.
+The most trivial example of an esqueleto query is `return` (`paginate` is basically `paginateWith return`). This one is a bit less trivial.
 
 ``` haskell
 import Import

@@ -23,6 +23,7 @@ import Data.Text (Text)
 import qualified Data.Text.Read as R
 import Database.Esqueleto
 import Database.Esqueleto.Internal.Language
+import Database.Esqueleto.Internal.Sql
 import Prelude
 import Text.Shakespeare.Text
 import Yesod hiding (Value)
@@ -41,24 +42,24 @@ instance Default PageConfig where
 
 -- | Returned by 'paginate' and friends.
 data Page r = Page
-            { pageResults :: [Entity r] -- ^ Returned entities.
+            { pageResults :: [r] -- ^ Returned entities.
             , pageCount :: Int64 -- ^ Total number of pages. This will be at minimum 1, even for an empty result set.
             , nextPage :: Maybe Text -- ^ Link to next page, pre-rendered.
             , previousPage :: Maybe Text -- ^ Link to previous page, pre-rendered.
             } deriving (Eq, Read, Show)
 
 -- | Paginate a model using default options - nothing special.
-paginate :: (PersistEntity r, RenderRoute site, YesodPersist site,
-             YesodPersistBackend site ~ SqlPersistT,
-             PersistEntityBackend r ~ SqlBackend)
+paginate :: (From SqlQuery SqlExpr SqlBackend a, RenderRoute site,
+             YesodPersist site, SqlSelect a r,
+             YesodPersistBackend site ~ SqlPersistT)
          => HandlerT site IO (Page r) -- ^ Returned page.
 paginate = paginateWith return
 
 -- | Paginate a model, given an esqueleto query.
-paginateWith :: (PersistEntity r, From SqlQuery SqlExpr SqlBackend t,
+paginateWith :: (From SqlQuery SqlExpr SqlBackend t, SqlSelect a r,
                  RenderRoute site, YesodPersist site,
                  YesodPersistBackend site ~ SqlPersistT)
-             => (t -> SqlQuery (SqlExpr (Entity r))) -- ^ SQL query.
+             => (t -> SqlQuery a) -- ^ SQL query.
              -> HandlerT site IO (Page r) -- ^ Returned page.
 paginateWith sel = do
     params <- liftM2 (\a b -> fst a ++ reqGetParams b)
@@ -73,11 +74,11 @@ paginateWith sel = do
     paginateWithConfig def { pageSize, currentPage } sel
 
 -- | Paginate a model, given a configuration and an esqueleto query.
-paginateWithConfig :: (PersistEntity r, From SqlQuery SqlExpr SqlBackend t,
+paginateWithConfig :: (From SqlQuery SqlExpr SqlBackend t, SqlSelect a r,
                        RenderRoute site, YesodPersist site,
                        YesodPersistBackend site ~ SqlPersistT)
                    => PageConfig -- ^ Preferred config.
-                   -> (t -> SqlQuery (SqlExpr (Entity r))) -- ^ SQL query.
+                   -> (t -> SqlQuery a) -- ^ SQL query.
                    -> HandlerT site IO (Page r) -- ^ Returned page.
 paginateWithConfig c sel = do
     let filterStmt u = limit (pageSize c) >> return u

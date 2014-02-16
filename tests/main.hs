@@ -44,7 +44,7 @@ instance YesodPersist TestApp where
 
 getItemsR :: HandlerT TestApp IO TypedContent
 getItemsR = do
-    (items :: Page Item) <- paginate
+    (items :: Page (Entity Item)) <- paginate
     selectRep . provideRep $ return [stext|#{show items}|]
 
 main :: IO ()
@@ -88,11 +88,11 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
                 cp <- getPage
                 liftIO $ length (pageResults cp) `shouldBe` 5
 
-getPage :: YesodExample TestApp (Page Item)
+getPage :: YesodExample TestApp (Page (Entity Item))
 getPage = withResponse $ \SResponse { simpleBody } ->
     return $ read (B.toString simpleBody)
 
-wantPage :: Page Item -> YesodExample TestApp ()
+wantPage :: Page (Entity Item) -> YesodExample TestApp ()
 wantPage p = do
     pg <- getPage
     liftIO $ pg `shouldBe` p
