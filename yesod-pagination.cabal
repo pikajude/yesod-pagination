@@ -16,6 +16,7 @@ library
   build-depends:       base >= 4.4 && < 4.7
                      , data-default
                      , esqueleto
+                     , shakespeare
                      , shakespeare-text
                      , text
                      , yesod
