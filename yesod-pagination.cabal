@@ -1,5 +1,5 @@
 name:                yesod-pagination
-version:             0.3.0.0
+version:             0.4.0.0
 synopsis:            Pagination in Yesod
 description:         Easy pagination for Yesod.
 homepage:            https://github.com/joelteon/yesod-pagination
@@ -17,7 +17,6 @@ library
                      , data-default
                      , esqueleto
                      , shakespeare
-                     , shakespeare-text
                      , text
                      , yesod
   hs-source-dirs:      src
@@ -34,7 +33,7 @@ test-suite test
                      , persistent-sqlite
                      , resource-pool
                      , resourcet
-                     , shakespeare-text
+                     , shakespeare
                      , text
                      , utf8-string
                      , wai-test

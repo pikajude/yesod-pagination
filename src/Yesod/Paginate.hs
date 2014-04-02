@@ -43,6 +43,7 @@ instance Default PageConfig where
 -- | Returned by 'paginate' and friends.
 data Page r = Page
             { pageResults :: [r] -- ^ Returned entities.
+            , firstPage :: Maybe Text -- ^ Link to first page.
             , nextPage :: Maybe Text -- ^ Link to next page, pre-rendered.
             , previousPage :: Maybe Text -- ^ Link to previous page, pre-rendered.
             } deriving (Eq, Read, Show)
@@ -94,10 +95,12 @@ paginateWithConfig c sel = do
 
     let rt = fromMaybe (error "Attempting to use paginate on a server error page.") rt'
         qs = snd $ renderRoute rt
+        fp = rend rt $ updateQs qs ("page", "1")
         np = rend rt $ updateQs qs ("page", [st|#{cp + 1}|])
         pp = rend rt $ updateQs qs ("page", [st|#{cp - 1}|])
 
     return Page { pageResults = take (fromIntegral $ pageSize c) es
+                , firstPage = if cp >= 2 then Just fp else Nothing
                 , nextPage = if fromIntegral (length es) == pageSize c + 1
                                  then Just np
                                  else Nothing

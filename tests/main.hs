@@ -57,14 +57,14 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
                 clearOut pool
 
                 get ItemsR
-                wantPage $ Page [] Nothing Nothing
+                wantPage $ Page [] Nothing Nothing Nothing
 
             yit "with some items" $ do
                 clearOut pool
                 k <- liftIO $ runSqlPersistMPool (insert $ Item "hello, world!") pool
 
                 get ItemsR
-                wantPage $ Page [Entity k (Item "hello, world!")] Nothing Nothing
+                wantPage $ Page [Entity k (Item "hello, world!")] Nothing Nothing Nothing
 
             yit "with two pages" $ do
                 clearOut pool
