@@ -13,7 +13,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Yesod.Paginate
-  build-depends:       base >= 4.4 && < 4.7
+  build-depends:       base >= 4.4 && < 5
                      , data-default
                      , esqueleto
                      , shakespeare >= 2
