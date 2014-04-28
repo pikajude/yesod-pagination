@@ -13,7 +13,6 @@ import Control.Monad.Trans.Resource
 import qualified Data.ByteString.Lazy.UTF8 as B
 import Data.Maybe
 import Data.Pool
-import Data.Text (Text)
 import Database.Persist.Sqlite hiding (get)
 import Network.Wai.Test
 import Test.Hspec
@@ -33,6 +32,7 @@ instance Yesod TestApp
 
 mkYesod "TestApp" [parseRoutes|
 /items ItemsR GET
+/items/page/#Int ItemsPageR GET
 |]
 
 instance YesodPersist TestApp where
@@ -42,10 +42,14 @@ instance YesodPersist TestApp where
         TestApp p <- getYesod
         runSqlPool act p
 
-getItemsR :: HandlerT TestApp IO TypedContent
-getItemsR = do
-    (items :: Page (Entity Item)) <- paginate
+getItemsPageR :: Int -> HandlerT TestApp IO TypedContent
+getItemsPageR i = do
+    (items :: Page (Route TestApp) (Entity Item)) <-
+        paginate $ PageConfig 10 i ItemsR ItemsPageR
     selectRep . provideRep $ return [stext|#{show items}|]
+
+getItemsR :: HandlerT TestApp IO TypedContent
+getItemsR = getItemsPageR 1
 
 main :: IO ()
 main = withSqlitePool ":memory:" 1 $ \pool -> do
@@ -84,15 +88,15 @@ main = withSqlitePool ":memory:" 1 $ \pool -> do
                 clearOut pool
                 liftIO $ runSqlPersistMPool (replicateM_ 5 $ insert $ Item "hello, world!") pool
 
-                get ("/items?page=2" :: Text)
+                get $ ItemsPageR 2
                 cp <- getPage
                 liftIO $ length (pageResults cp) `shouldBe` 0
 
-getPage :: YesodExample TestApp (Page (Entity Item))
+getPage :: YesodExample TestApp (Page (Route TestApp) (Entity Item))
 getPage = withResponse $ \SResponse { simpleBody } ->
     return $ read (B.toString simpleBody)
 
-wantPage :: Page (Entity Item) -> YesodExample TestApp ()
+wantPage :: Page (Route TestApp) (Entity Item) -> YesodExample TestApp ()
 wantPage p = do
     pg <- getPage
     liftIO $ pg `shouldBe` p
