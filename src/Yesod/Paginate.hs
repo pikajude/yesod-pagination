@@ -10,8 +10,8 @@ module Yesod.Paginate (
     paginate, paginateWith,
 
     -- *** Datatypes
-    PageConfig(..),
-    Page(..)
+    PageConfig (..),
+    Page (..)
 ) where
 
 import Control.Monad
@@ -41,26 +41,23 @@ data Page route r = Page
 
 -- | Paginate a model, given a configuration. This just performs a @SELECT
 -- *@.
-paginate :: (YesodPersist site, SqlSelect a s,
-             MonadResource (YesodPersistBackend site (HandlerT site IO)),
-             From SqlQuery SqlExpr SqlBackend a,
-             MonadSqlPersist (YesodPersistBackend site (HandlerT site IO)))
-         => PageConfig site -- ^ Preferred config.
-         -> HandlerT site IO (Page (Route site) s) -- ^ Returned page.
+paginate :: ( From SqlQuery SqlExpr SqlBackend a
+            , SqlSelect a a1, YesodPersist site
+            , YesodPersistBackend site ~ Connection)
+         => PageConfig app -> HandlerT site IO (Page (Route app) a1)
 paginate c = paginateWith c return
 
 -- | Paginate a model, given a configuration and an esqueleto query.
-paginateWith :: (YesodPersist site, SqlSelect a s,
-                 MonadResource (YesodPersistBackend site (HandlerT site IO)),
-                 From SqlQuery SqlExpr SqlBackend q,
-                 MonadSqlPersist (YesodPersistBackend site (HandlerT site IO)))
-             => PageConfig site -- ^ Preferred config.
-             -> (q -> SqlQuery a) -- ^ SQL query.
-             -> HandlerT site IO (Page (Route site) s) -- ^ Returned page.
+paginateWith :: ( From SqlQuery SqlExpr SqlBackend a1, SqlSelect a a2
+                , YesodPersist site, YesodPersistBackend site ~ Connection
+                )
+             => PageConfig app -- ^ Preferred config.
+             -> (a1 -> SqlQuery a) -- ^ SQL query.
+             -> HandlerT site IO (Page (Route app) a2) -- ^ Returned page.
 paginateWith c sel = do
     let cp = max 1 $ fromIntegral (currentPage c)
 
-    es <- runDB $ select $ from $ \u -> do
+    es <- runDB $ select $ from $ \ u -> do
         limit (fromIntegral (pageSize c) + 1)
         offset $ max 0 $ fromIntegral (pageSize c) * (cp - 1)
         sel u
